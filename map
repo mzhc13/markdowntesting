@@ -3,35 +3,70 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>UK interactive map — hover to highlight cities</title>
+  <title>UK Interactive Map — Hover to Highlight Cities</title>
+
   <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-sA+e2kXQqf2hC5jK0Qm+FZQ0oXQwO7gkDkQ2v7qtm2M=" crossorigin=""/>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-sA+e2kXQqf2hC5jK0Qm+FZQ0oXQwO7gkDkQ2v7qtm2M="
+    crossorigin=""
+  />
+
   <style>
-    html,body,#map{height:100%;margin:0;padding:0}
-    body{font-family:system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial}
-    .map-container{height:80vh;max-width:1100px;margin:24px auto;border-radius:12px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,0.12)}
-    .controls{max-width:1100px;margin:8px auto;padding:10px 12px;display:flex;gap:12px;align-items:center}
-    .city-list{font-size:0.95rem}
-    .legend{font-size:0.85rem;color:#444}
-    /* make marker hover pointer obvious */
-    .leaflet-interactive{cursor:pointer}
+    html, body, #map {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: #f8f9fa;
+    }
+    .map-container {
+      height: 80vh;
+      max-width: 1100px;
+      margin: 24px auto;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+    }
+    .legend {
+      max-width: 1100px;
+      margin: 10px auto;
+      padding: 10px 12px;
+      font-size: 0.95rem;
+      color: #444;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+    .leaflet-interactive {
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
-  <div class="controls">
-    <div class="legend">Hover a marker (or focus with keyboard) to highlight a city — edit the <code>cities</code> array in the script to change which cities show.</div>
+  <div class="legend">
+    <strong>Hover</strong> or <strong>focus</strong> on a marker to highlight a city.  
+    You can edit the <code>cities</code> array in the script to show other locations.
   </div>
+
   <div class="map-container" id="map"></div>
 
   <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-o9N1j7kC3XkXnq8f+I0kqQn6fKQnK8wqG3f2yZr3z0M=" crossorigin=""></script>
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-o9N1j7kC3XkXnq8f+I0kqQn6fKQnK8wqG3f2yZr3z0M="
+    crossorigin=""
+  ></script>
+
   <script>
-    // === EDIT THIS LIST to add/remove cities ===
-    // Each item: {name: 'City name', lat: latitude, lon: longitude, info: 'optional HTML info'}
+    // === Edit this list to add/remove cities ===
     const cities = [
       { name: 'London', lat: 51.5074, lon: -0.1278, info: '<strong>London</strong><br>Capital of the UK' },
       { name: 'Manchester', lat: 53.4808, lon: -2.2426, info: '<strong>Manchester</strong><br>Major city in northern England' },
-      { name: 'Birmingham', lat: 52.4862, lon: -1.8904, info: '<strong>Birmingham</strong><br>Large city in the Midlands' },
+      { name: 'Birmingham', lat: 52.4862, lon: -1.8904, info: '<strong>Birmingham</strong><br>City in the Midlands' },
       { name: 'Leeds', lat: 53.8008, lon: -1.5491, info: '<strong>Leeds</strong>' },
       { name: 'Glasgow', lat: 55.8642, lon: -4.2518, info: '<strong>Glasgow</strong>' },
       { name: 'Edinburgh', lat: 55.9533, lon: -3.1883, info: '<strong>Edinburgh</strong>' },
@@ -39,86 +74,40 @@
       { name: 'Belfast', lat: 54.5973, lon: -5.9301, info: '<strong>Belfast</strong>' }
     ];
 
-    // Initialise map centred on UK
-    const map = L.map('map', {preferCanvas:true}).setView([54.0, -2.0], 6);
+    // Initialise map centred on the UK
+    const map = L.map('map', { preferCanvas: true }).setView([54.0, -2.0], 6);
 
-    // OpenStreetMap tile layer (no API key needed)
+    // OpenStreetMap tiles (no API key required)
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18,
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // Create a layer group to hold markers
+    // Marker style
+    const normalStyle = { radius: 7, color: '#1f78b4', fillColor: '#1f78b4', weight: 1, fillOpacity: 0.8 };
+    const hoverStyle  = { radius: 14, color: '#ff7f0e', fillColor: '#ff7f0e', weight: 2, fillOpacity: 0.95 };
+
+    // Add city markers
     const markersLayer = L.layerGroup().addTo(map);
 
-    // Style presets
-    const normalStyle = { radius: 7, weight: 1, opacity: 1, fillOpacity: 0.8 };
-    const hoverStyle =  { radius: 14, weight: 2, opacity: 1, fillOpacity: 0.95 };
-
-    // For accessibility, allow keyboard focusing of markers
-    function makeFocusable(el) {
-      el.setAttribute('tabindex','0');
-      el.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') el.click();
-      });
-    }
-
     cities.forEach(city => {
-      const marker = L.circleMarker([city.lat, city.lon], Object.assign({color:'#1f78b4', fillColor:'#1f78b4'}, normalStyle)).addTo(markersLayer);
+      const marker = L.circleMarker([city.lat, city.lon], normalStyle).addTo(markersLayer);
+      marker.bindPopup(city.info || city.name);
+      marker.bindTooltip(city.name, { direction: 'top', offset: [0, -8] });
 
-      // bind a popup (opens on click)
-      marker.bindPopup(city.info || city.name, {offset:[0,-10]});
-
-      // tooltip that follows cursor
-      marker.bindTooltip(city.name, {permanent:false, direction:'top', offset:[0,-8]});
-
-      // hover behaviour
-      marker.on('mouseover', (e) => {
-        marker.setStyle(Object.assign({color:'#ff7f0e', fillColor:'#ff7f0e'}, hoverStyle));
+      marker.on('mouseover', () => {
+        marker.setStyle(hoverStyle);
         marker.openTooltip();
-        // optionally zoom to marker slightly
-        // map.flyTo([city.lat, city.lon], Math.max(map.getZoom(),8), {duration:0.6});
       });
-      marker.on('mouseout', (e) => {
-        marker.setStyle(Object.assign({color:'#1f78b4', fillColor:'#1f78b4'}, normalStyle));
+      marker.on('mouseout', () => {
+        marker.setStyle(normalStyle);
         marker.closeTooltip();
-      });
-
-      // focus/blur for keyboard users
-      marker.on('focus', () => {
-        marker.fire('mouseover');
-      });
-      marker.on('blur', () => {
-        marker.fire('mouseout');
-      });
-
-      // add accessible attributes after the marker is added to the DOM
-      marker.once('add', () => {
-        const el = marker.getElement();
-        if (el) makeFocusable(el);
       });
     });
 
-    // Fit map bounds to markers with some padding
+    // Fit map to show all markers nicely
     const bounds = L.latLngBounds(cities.map(c => [c.lat, c.lon]));
     map.fitBounds(bounds.pad(0.35));
-
-    // OPTIONAL: Helper function to center and temporarily highlight a city by name
-    function highlightCityByName(name) {
-      const c = cities.find(x => x.name.toLowerCase() === name.toLowerCase());
-      if (!c) return;
-      map.setView([c.lat, c.lon], 9, {animate:true});
-      // find the circleMarker at that lat/lon
-      markersLayer.eachLayer(layer => {
-        if (layer.getLatLng && layer.getLatLng().lat === c.lat && layer.getLatLng().lng === c.lon) {
-          layer.fire('mouseover');
-          setTimeout(() => layer.fire('mouseout'), 1400);
-        }
-      });
-    }
-
-    // Expose to window for console use
-    window.highlightCityByName = highlightCityByName;
   </script>
 </body>
 </html>
