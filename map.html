@@ -1,68 +1,77 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>UK Interactive Map — Hover to Highlight Cities</title>
 
   <!-- Leaflet CSS -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-sA+e2kXQqf2hC5jK0Qm+FZQ0oXQwO7gkDkQ2v7qtm2M="
     crossorigin=""
   />
 
   <style>
-    html, body, #map {
+    html, body {
       height: 100%;
       margin: 0;
       padding: 0;
-    }
-    body {
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
       background: #f8f9fa;
     }
-    .map-container {
-      height: 80vh;
+
+    .container {
       max-width: 1100px;
-      margin: 24px auto;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+      margin: 20px auto;
+      padding: 10px;
     }
+
+    h2 {
+      text-align: center;
+      color: #333;
+    }
+
     .legend {
-      max-width: 1100px;
-      margin: 10px auto;
-      padding: 10px 12px;
       font-size: 0.95rem;
-      color: #444;
+      color: #555;
+      margin-bottom: 10px;
       background: #fff;
       border-radius: 8px;
+      padding: 8px 12px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.08);
     }
+
+    #map {
+      height: 80vh;
+      width: 100%;
+      border-radius: 12px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    }
+
     .leaflet-interactive {
       cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <div class="legend">
-    <strong>Hover</strong> or <strong>focus</strong> on a marker to highlight a city.  
-    You can edit the <code>cities</code> array in the script to show other locations.
+  <div class="container">
+    <h2>🗺️ UK Interactive Map</h2>
+    <div class="legend">
+      Hover or focus on a marker to highlight a city.  
+      You can add or remove cities in the <code>cities</code> array inside the script.
+    </div>
+    <div id="map"></div>
   </div>
-
-  <div class="map-container" id="map"></div>
 
   <!-- Leaflet JS -->
   <script
     src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-o9N1j7kC3XkXnq8f+I0kqQn6fKQnK8wqG3f2yZr3z0M="
     crossorigin=""
   ></script>
 
   <script>
-    // === Edit this list to add/remove cities ===
+    // === Edit this list to change which cities show ===
     const cities = [
       { name: 'London', lat: 51.5074, lon: -0.1278, info: '<strong>London</strong><br>Capital of the UK' },
       { name: 'Manchester', lat: 53.4808, lon: -2.2426, info: '<strong>Manchester</strong><br>Major city in northern England' },
@@ -74,18 +83,30 @@
       { name: 'Belfast', lat: 54.5973, lon: -5.9301, info: '<strong>Belfast</strong>' }
     ];
 
-    // Initialise map centred on the UK
-    const map = L.map('map', { preferCanvas: true }).setView([54.0, -2.0], 6);
+    // Create map
+    const map = L.map('map').setView([54.0, -2.0], 6);
 
-    // OpenStreetMap tiles (no API key required)
+    // Load OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18,
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // Marker style
-    const normalStyle = { radius: 7, color: '#1f78b4', fillColor: '#1f78b4', weight: 1, fillOpacity: 0.8 };
-    const hoverStyle  = { radius: 14, color: '#ff7f0e', fillColor: '#ff7f0e', weight: 2, fillOpacity: 0.95 };
+    // Marker styles
+    const normalStyle = {
+      radius: 7,
+      color: '#1f78b4',
+      fillColor: '#1f78b4',
+      weight: 1,
+      fillOpacity: 0.8
+    };
+    const hoverStyle = {
+      radius: 14,
+      color: '#ff7f0e',
+      fillColor: '#ff7f0e',
+      weight: 2,
+      fillOpacity: 0.95
+    };
 
     // Add city markers
     const markersLayer = L.layerGroup().addTo(map);
@@ -105,7 +126,7 @@
       });
     });
 
-    // Fit map to show all markers nicely
+    // Fit map to show all cities
     const bounds = L.latLngBounds(cities.map(c => [c.lat, c.lon]));
     map.fitBounds(bounds.pad(0.35));
   </script>
