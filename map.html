@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>UK Interactive Map — Hover to Highlight Cities</title>
+  <title>UK City Map — SHAREing Project</title>
 
   <!-- Leaflet CSS -->
   <link
@@ -12,123 +12,272 @@
     crossorigin=""
   />
 
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
   <style>
     html, body {
       height: 100%;
       margin: 0;
-      padding: 0;
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
       background: #f8f9fa;
     }
 
-    .container {
-      max-width: 1100px;
-      margin: 20px auto;
-      padding: 10px;
+    #map {
+      height: 100%;
+      width: 100%;
     }
 
-    h2 {
-      text-align: center;
+    /* Overlay background */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .overlay.active {
+      display: flex;
+      animation: fadeIn 0.3s ease forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    /* Central modal panel */
+    .info-panel {
+      background: #ffffff;
+      width: 90%;
+      max-width: 600px;
+      padding: 25px 30px 35px;
+      border-radius: 20px;
+      box-shadow: 0 12px 25px rgba(0, 0, 0, 0.25);
+      transform: scale(0.9);
+      opacity: 0;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .overlay.active .info-panel {
+      transform: scale(1);
+      opacity: 1;
+    }
+
+    .info-panel h2 {
+      margin-top: 0;
+      color: #002A41;
+      font-size: 1.6rem;
+    }
+
+    .info-panel h3 {
+      margin-top: 25px;
+      color: #740574;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 1.6rem;
+      cursor: pointer;
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      color: #002A41;
+    }
+
+    .city-desc {
+      margin-top: 10px;
+      line-height: 1.6;
       color: #333;
     }
 
-    .legend {
-      font-size: 0.95rem;
-      color: #555;
-      margin-bottom: 10px;
-      background: #fff;
-      border-radius: 8px;
-      padding: 8px 12px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-    }
+    /* Team members grid layout */
+.member-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 20px;
+  padding: 0;
+  margin-top: 20px;
+  list-style: none;
+  text-align: center;
+}
 
-    #map {
-      height: 80vh;
-      width: 100%;
-      border-radius: 12px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-    }
+.member {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
 
-    .leaflet-interactive {
-      cursor: pointer;
-    }
-  </style>
+.member .avatar {
+  width: 80px;
+  height: 80px;
+  background: #740574;
+  border-radius: 50%;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.member .avatar i {
+  color: #FFFFFF;
+  width: 32px;
+  height: 32px;
+}
+
+.member-name {
+  font-weight: 600;
+  color: #222;
+}
+
+.member-role {
+  font-style: italic;
+  color: #444;
+  font-size: 0.9rem;
+}
+
+</style>
 </head>
 <body>
-  <div class="container">
-    <h2>🗺️ UK Interactive Map</h2>
-    <div class="legend">
-      Hover or focus on a marker to highlight a city.  
-      You can add or remove cities in the <code>cities</code> array inside the script.
-    </div>
-    <div id="map"></div>
-  </div>
-
-  <!-- Leaflet JS -->
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    crossorigin=""
-  ></script>
-
+<div id="map"></div>
+ 
+  <div id="overlay" class="overlay" onclick="closePanel(event)">
+<div id="infoPanel" class="info-panel" onclick="event.stopPropagation()">
+<button class="close-btn" onclick="closePanel()">×</button>
+<h2 id="cityTitle">City</h2>
+<div id="cityContent" class="city-desc">Click a city to learn more.</div>
+</div>
+</div>
+ 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+ 
   <script>
-    // === Edit this list to change which cities show ===
+    // === Example city data with SHAREing members placeholders ===
     const cities = [
-      { name: 'London', lat: 51.5074, lon: -0.1278, info: '<strong>London</strong><br>Capital of the UK' },
-      { name: 'Manchester', lat: 53.4808, lon: -2.2426, info: '<strong>Manchester</strong><br>Major city in northern England' },
-      { name: 'Birmingham', lat: 52.4862, lon: -1.8904, info: '<strong>Birmingham</strong><br>City in the Midlands' },
-      { name: 'Leeds', lat: 53.8008, lon: -1.5491, info: '<strong>Leeds</strong>' },
-      { name: 'Glasgow', lat: 55.8642, lon: -4.2518, info: '<strong>Glasgow</strong>' },
-      { name: 'Edinburgh', lat: 55.9533, lon: -3.1883, info: '<strong>Edinburgh</strong>' },
-      { name: 'Cardiff', lat: 51.4816, lon: -3.1791, info: '<strong>Cardiff</strong>' },
-      { name: 'Belfast', lat: 54.5973, lon: -5.9301, info: '<strong>Belfast</strong>' }
+      {
+        name: 'Durham University',
+        lat: 54.7753, lon: -1.5849,
+        info: 'Durham University is a collegiate public research university in Durham, England, founded by an Act of Parliament in 1832 and incorporated by royal charter in 1837. While being the third-oldest university in England, the Department of Computer Science is one of Durham’s newest academic departments, having split from the School of Engineering and Computer Science in 2017. It currently hosts research groups in computer vision, AI, high-performance and scientific computing, digital humanities, computer science education, and networks. Durham houses multiple supercomputers, most notably the supercomputer serving the eight most research-intensive universities in the North of England, and the DiRAC tier-1 machine',
+        members: [
+          { name: 'Thomas Flynn', role: 'Research Software Engineer' },
+          { name: 'Tobias Weinzierl', role: 'Professor in the Department of Computer Science' },
+          { name: 'Eva Fernandez', role: 'Community Manager for Digital Research Infrastructure' },
+          { name: 'Alan Real', role: 'Director of Advanced Research Computing' },
+          { name: 'Eamonn Bell', role: 'Professor in the Department of Computer Science' },
+          { name: 'Alastair Basden', role: 'Director of COSMA' },
+          { name: 'Gokmen Kilic', role: 'Research Software Engineer' },
+        ]
+      },
+      {
+        name: 'Cardiff University',
+        lat: 51.4816, lon: -3.1791,
+        info: 'Cardiff is the capital of Wales.',
+        members: [
+          { name: 'Jon Lockley', role: 'Director of Advanced Research Computing' },
+          { name: 'Jon Lockley', role: 'Director of Advanced Research Computing' }
+        ]
+      },
+      {
+        name: 'University of Sheffield',
+        lat: 53.3811, lon: -1.4701,
+        info: 'Sheffield is a city in South Yorkshire.',
+        members: [
+          { name: 'Davide Costanzo', role: 'Head of Particle Physics and Particle Astrophysics Research Cluster' }
+        ]
+      },
+      {
+        name: 'Queen Mary University of London',
+        lat: 51.5074, lon: -0.1278,
+        info: 'Queen Mary University of London (QMUL) is an established university in London’s vibrant East End committed to high-quality research. High-Performace Computing underpins the activity of two Research Centres at QMUL: The Centre for Geometry, Analysis and Gravitation in the School of Mathematical Sciences, and the Centre for Fundamental Physics in the School of Physical and Chemical Sciences. Queen Mary University of London hosts and runs Apocrita, a heterogeneous HPC cluster comprising around 350 nodes and 12,500 compute cores.',
+        members: [
+         { name: 'Georgios Fourtakas', role: 'Centre for Geometry, Analysis and Gravitation, School of Mathematical Sciences' },
+          { name: 'Jon Hays', role: ' Head of Particle Physics Research Centre' }
+        ]
+      },
+      {
+        name: 'The University of Manchester',
+        lat: 53.4808, lon: -2.2426,
+        info: 'The University of Manchester is a public research university located in Manchester, UK and its roots trace back to 1824. As a research-intensive institution, it is a member of the Russell Group, the N8 Research Partnership, and the US-based Universities Research Association. Recognised as one of the UK’s red brick universities, it has a long-standing tradition of academic excellence, innovation and research. The School of Engineering at the University of Manchester is a centre of excellence in innovation, research, and interdisciplinary collaboration. Through the Modelling and Simulation Centre (MaSC), the School harnesses advanced computational techniques to tackle complex engineering challenges.',
+        members: [
+          { name: 'Georgios Fourtakas', role: 'Associate Professor, School of Engineering' }
+        ]
+      },
+      {
+        name: 'Swansea University',
+        lat: 51.6214, lon: -3.9436,
+        info: 'Swansea University is a research-intensive university in Swansea, Wales, founded by royal charter in 1920 as a constituent college of the University of Wales, and becoming independent in 2007. The Swansea Academy of Advanced Computing (SA2C), founded in 2017, bridges Digital Services and the academic Faculties to deliver high-performance computing services to researchers across Wales. This has included hosting the Swansea hub of the Supercomputing Wales facility, and hosting the AccelerateAI facility.',
+        members: [
+          { name: 'Ed Bennett', role: 'Senior Research Software Engineer' }
+        ]
+      },
+      {
+        name: 'CoSeC',
+        lat: 53.3406, lon: -2.8494,
+        info: 'The Computational Science Centre for Research Communities (CoSeC) enables and supports collaborative computational research communities that are funded across UKRI. It has a mission to deliver research software as an infrastructure in order to enable world-class UK Research and Innovation. The communities are designed using multiple structures, including Collaborative Computational Projects (CCPs) and High-End Computing (HEC) Consortia. The Centre is run by UKRI STFC Scientific Computing and is made up of a core Programme Office plus a large team of Research Technical Professionals organised into domain-specific technical teams.',
+        members: [
+          { name: 'Damian Jones', role: 'Programme Manager' },
+          { name: 'Stephen Longshaw', role: 'Director of the Computational Science Centre for Research Communities' }
+        ]
+      }
     ];
-
-    // Create map
-    const map = L.map('map').setView([54.0, -2.0], 6);
-
-    // Load OpenStreetMap tiles
+ 
+    const ukBounds = L.latLngBounds([49.8, -8.0], [59.0, 2.0]);
+    const map = L.map('map', {
+      minZoom: 5,
+      maxZoom: 10,
+      maxBounds: ukBounds,
+      maxBoundsViscosity: 1.0
+    }).setView([54, -2], 6);
+ 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 18,
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
-
-    // Marker styles
-    const normalStyle = {
-      radius: 7,
-      color: '#1f78b4',
-      fillColor: '#1f78b4',
-      weight: 1,
-      fillOpacity: 0.8
-    };
-    const hoverStyle = {
-      radius: 14,
-      color: '#ff7f0e',
-      fillColor: '#ff7f0e',
-      weight: 2,
-      fillOpacity: 0.95
-    };
-
-    // Add city markers
-    const markersLayer = L.layerGroup().addTo(map);
-
+ 
+    const normalStyle = { radius: 8, color: '#002A41', fillColor: '#002A41', weight: 1, fillOpacity: 0.85 };
+    const hoverStyle = { radius: 14, color: '#B906B9', fillColor: '#B906B9', weight: 2, fillOpacity: 1 };
+ 
+    const overlay = document.getElementById('overlay');
+    const cityTitle = document.getElementById('cityTitle');
+    const cityContent = document.getElementById('cityContent');
+ 
+    function openPanel(city) {
+      cityTitle.textContent = city.name;
+      cityContent.innerHTML = `
+  <p>${city.info}</p>
+  <h3>Team Members</h3>
+  <ul class="member-list">
+    ${city.members.map(m => `
+      <li class="member">
+        <div class="avatar"><i data-lucide="user"></i></div>
+        <div class="member-name">${m.name}</div>
+        <div class="member-role"><em>${m.role}</em></div>
+      </li>
+    `).join('')}
+  </ul>
+`;
+      overlay.classList.add('active');
+      lucide.createIcons();
+    }
+ 
+    function closePanel(event) {
+      if (event && event.target !== overlay && !event.target.classList.contains('close-btn'))
+        return;
+      overlay.classList.remove('active');
+    }
+ 
     cities.forEach(city => {
-      const marker = L.circleMarker([city.lat, city.lon], normalStyle).addTo(markersLayer);
-      marker.bindPopup(city.info || city.name);
+      const marker = L.circleMarker([city.lat, city.lon], normalStyle).addTo(map);
       marker.bindTooltip(city.name, { direction: 'top', offset: [0, -8] });
-
-      marker.on('mouseover', () => {
-        marker.setStyle(hoverStyle);
-        marker.openTooltip();
-      });
-      marker.on('mouseout', () => {
-        marker.setStyle(normalStyle);
-        marker.closeTooltip();
-      });
+ 
+      marker.on('mouseover', () => marker.setStyle(hoverStyle));
+      marker.on('mouseout', () => marker.setStyle(normalStyle));
+      marker.on('click', () => openPanel(city));
     });
-
-    // Fit map to show all cities
-    const bounds = L.latLngBounds(cities.map(c => [c.lat, c.lon]));
-    map.fitBounds(bounds.pad(0.35));
-  </script>
+</script>
 </body>
 </html>
